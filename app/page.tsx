@@ -52,6 +52,20 @@ const formatTime = (seconds: number) => {
   return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
 };
 
+function shuffleTracks(tracks: Track[], seed: number) {
+  const shuffled = [...tracks];
+  let state = seed || 1;
+  const random = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
 function getAudioContext() {
   return window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 }
@@ -134,6 +148,7 @@ export default function Home() {
   const [onlineTracks, setOnlineTracks] = useState<Track[]>([]);
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('idle');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [shuffleKey, setShuffleKey] = useState(1);
 
   useEffect(() => {
     if (musicSource !== 'audius') return;
@@ -158,7 +173,8 @@ export default function Home() {
   }, [genre, musicSource, refreshKey]);
 
   const isAudiusReady = musicSource === 'audius' && catalogStatus === 'ready' && onlineTracks.length > 0;
-  const activeTracks = isAudiusReady ? onlineTracks : localTracks;
+  const catalogTracks = isAudiusReady ? onlineTracks : localTracks;
+  const activeTracks = useMemo(() => shuffleTracks(catalogTracks, shuffleKey), [catalogTracks, shuffleKey]);
   const safeIndex = currentIndex % activeTracks.length;
   const currentTrack = activeTracks[safeIndex];
   const isRunning = sessionState === 'running';
@@ -210,6 +226,8 @@ export default function Home() {
     setSelectedMinutes(value);
     setSecondsLeft(value * 60);
     setSessionState('idle');
+    setShuffleKey((key) => key + 1);
+    setCurrentIndex(0);
   };
 
   const startOrToggle = async () => {
