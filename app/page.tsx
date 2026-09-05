@@ -66,6 +66,7 @@ export default function Home() {
   const [durations, setDurations] = useState(tracks.map((track) => track.fallbackDuration));
   const [muted, setMuted] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   const currentTrack = tracks[currentIndex];
   const isRunning = sessionState === 'running';
@@ -118,7 +119,7 @@ export default function Home() {
 
   const startOrToggle = async () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || isStarting) return;
     if (sessionState === 'running') {
       audio.pause();
       setSessionState('paused');
@@ -127,9 +128,30 @@ export default function Home() {
     if (sessionState === 'finished' || secondsLeft === 0) setSecondsLeft(selectedMinutes * 60);
     if (sessionState === 'idle' || sessionState === 'finished') {
       const power = powerRef.current;
-      if (power) {
+      if (power && !muted) {
+        setIsStarting(true);
+        audio.volume = 0;
+        try {
+          await audio.play();
+          audio.pause();
+          audio.currentTime = 0;
+        } catch { /* The startup sound still gets its own play attempt below. */ }
+        audio.volume = 1;
         power.currentTime = 0;
-        try { await power.play(); } catch { /* Playback can continue without the switch sound. */ }
+        power.volume = 0.92;
+        await new Promise<void>((resolve) => {
+          let timeout = 0;
+          const finish = () => {
+            window.clearTimeout(timeout);
+            power.removeEventListener('ended', finish);
+            power.removeEventListener('error', finish);
+            resolve();
+          };
+          power.addEventListener('ended', finish, { once: true });
+          power.addEventListener('error', finish, { once: true });
+          timeout = window.setTimeout(finish, 6200);
+          void power.play().catch(finish);
+        });
       }
     }
     try {
@@ -138,6 +160,7 @@ export default function Home() {
     } catch {
       setSessionState('paused');
     }
+    setIsStarting(false);
   };
 
   const resetSession = () => {
@@ -178,7 +201,7 @@ export default function Home() {
 
       <header className="topbar">
         <a className="brand" href="#" aria-label="Needle home"><span className="brand-dot" /> NEEDLE</a>
-        <p className="session-label"><span className={isRunning ? 'live' : ''} /> {isRunning ? 'focus in progress' : 'focus session'}</p>
+        <nav className="session-nav" aria-label="Player sections"><span>FOR YOU</span><strong>MUSIC</strong><span>SESSION</span></nav>
         <button className="sound-button" aria-label={muted ? 'Turn sound on' : 'Mute sound'} onClick={() => setMuted((value) => !value)}>
           {muted ? <VolumeX /> : <Volume2 />}
         </button>
@@ -187,14 +210,15 @@ export default function Home() {
       <section className="workspace">
         <div className="player-column">
           <div className="eyebrow">NOW SPINNING · {String(currentIndex + 1).padStart(2, '0')}</div>
-          <div className={`turntable ${isRunning ? 'is-playing' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
+          <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
             <div className="platter"><div className="record"><div className="record-label"><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
             <div className="tonearm"><span className="pivot" /><span className="arm" /><span className="needle" /></div>
             <button className="power" onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
+            <div className="speed-switch" aria-hidden="true"><i /><small>33</small><small>45</small></div>
           </div>
 
           <div className="track-heading">
-            <div><p>TRACK {String(currentIndex + 1).padStart(2, '0')} / {String(tracks.length).padStart(2, '0')}</p><h1>{currentTrack.title}</h1><span>{currentTrack.artist}</span></div>
+            <div><p>TRACK {String(currentIndex + 1).padStart(2, '0')} / {String(tracks.length).padStart(2, '0')}</p><h1>{currentTrack.title}</h1><span>{currentTrack.artist}</span><div className="track-tags"><b>FOCUS MIX</b><b>VINYL</b><b>{tracks.length} TRACKS</b></div></div>
             <div className={`eq ${isRunning ? 'moving' : ''}`} aria-hidden="true"><i/><i/><i/><i/><i/><i/></div>
           </div>
           <input className="progress-range" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} aria-label="Track position" onChange={(event) => { const next = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = next; setCurrentTime(next); }} style={{ '--progress': `${duration ? (currentTime / duration) * 100 : 0}%` } as CSSProperties} />
@@ -214,14 +238,15 @@ export default function Home() {
             <button aria-label="Reset timer" onClick={resetSession}><RotateCcw /></button>
           </div>
           <div className="presets" aria-label="Focus duration">
-            {[15, 25, 45, 60].map((minutes) => <button disabled={isRunning} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => setMinutes(minutes)}>{minutes}</button>)}
+            {[5, 10, 15, 25, 45, 60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => setMinutes(minutes)}>{minutes}</button>)}
           </div>
           <label className="custom-time">
             <span>Custom</span>
             <input disabled={isRunning} type="number" min="1" max="180" inputMode="numeric" placeholder="minutes" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} />
             <small>MIN</small>
           </label>
-          <button className={`start-button ${isRunning ? 'active' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
+          <button disabled={isStarting} className={`start-button ${isRunning ? 'active' : ''} ${isStarting ? 'starting' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isStarting ? 'DROPPING THE NEEDLE…' : isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
+          <p className="startup-note"><span /> Needle drop plays before every new session</p>
 
           <div className="playlist-head"><div><p>YOUR SESSION</p><h3>Focus flow</h3></div><span>{formatTime(queue.total)} · {queue.items.length} TRACKS</span></div>
           <ol className="playlist">
