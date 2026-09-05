@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   BellRing,
   Cloud,
-  Disc3,
   Pause,
   Play,
   RefreshCw,
@@ -23,23 +22,12 @@ type Track = {
   src: string;
   duration: number;
   artwork?: string;
-  source: 'local' | 'audius';
+  source: 'audius';
 };
 type SessionState = 'idle' | 'running' | 'paused' | 'finished';
-type MusicSource = 'local' | 'audius';
 type CatalogStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-const localSource = (file: string) => `/audio/tracks/${encodeURIComponent(file)}`;
-const localTracks: Track[] = [
-  { id: 'local-cat', artist: 'Drove Amaro', title: 'Cat', src: localSource('Drove Amaro - Cat (hitmos.fm).mp3'), duration: 241, source: 'local' },
-  { id: 'local-chill-tune', artist: 'Nicolai Heidlas', title: 'Chill Tune', src: localSource('Nicolai Heidlas - Chill Tune (hitmos.fm).mp3'), duration: 238, source: 'local' },
-  { id: 'local-low-end', artist: 'Michael FK', title: 'Low End Theory', src: localSource('Michael FK - Low End Theory (hitmos.fm).mp3'), duration: 246, source: 'local' },
-  { id: 'local-dance', artist: 'Content Sounds', title: 'Dance', src: localSource('Content Sounds - Dance (hitmos.fm).mp3'), duration: 142, source: 'local' },
-  { id: 'local-pheromones', artist: 'Biometrix', title: 'Pheromones', src: localSource('Biometrix - Pheromones (hitmos.fm).mp3'), duration: 211, source: 'local' },
-  { id: 'local-from-inside', artist: 'C152', title: 'From Inside', src: localSource('C152 - From Inside (hitmos.fm).mp3'), duration: 155, source: 'local' },
-  { id: 'local-close-to-me', artist: 'C152 feat. Sam Ho', title: 'Close To Me', src: localSource('C152 feat Sam Ho - Close To Me (hitmos.fm).mp3'), duration: 137, source: 'local' },
-  { id: 'local-feeling-good', artist: 'Ron Gelinas', title: 'Feeling Good', src: localSource('Ron Gelinas - Feeling Good (hitmos.fm).mp3'), duration: 220, source: 'local' },
-];
+const placeholderTrack: Track = { id: 'audius-loading', artist: 'Audius', title: 'Tuning in…', src: '', duration: 0, source: 'audius' };
 
 const moods = [
   { label: 'CALM', genre: 'Ambient' },
@@ -139,12 +127,11 @@ export default function Home() {
   const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(localTracks[0].duration);
+  const [duration, setDuration] = useState(0);
   const [knownDurations, setKnownDurations] = useState<Record<string, number>>({});
   const [muted, setMuted] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [musicSource, setMusicSource] = useState<MusicSource>('audius');
   const [genre, setGenre] = useState('Ambient');
   const [onlineTracks, setOnlineTracks] = useState<Track[]>([]);
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('idle');
@@ -152,7 +139,6 @@ export default function Home() {
   const [shuffleKey, setShuffleKey] = useState(1);
 
   useEffect(() => {
-    if (musicSource !== 'audius') return;
     const controller = new AbortController();
     setCatalogStatus('loading');
     fetch(`/api/audius?genre=${encodeURIComponent(genre)}&refresh=${refreshKey}`, { signal: controller.signal })
@@ -171,18 +157,19 @@ export default function Home() {
         setCatalogStatus('error');
       });
     return () => controller.abort();
-  }, [genre, musicSource, refreshKey]);
+  }, [genre, refreshKey]);
 
-  const isAudiusReady = musicSource === 'audius' && catalogStatus === 'ready' && onlineTracks.length > 0;
-  const catalogTracks = isAudiusReady ? onlineTracks : localTracks;
-  const activeTracks = useMemo(() => shuffleTracks(catalogTracks, shuffleKey), [catalogTracks, shuffleKey]);
+  const isAudiusReady = catalogStatus === 'ready' && onlineTracks.length > 0;
+  const shuffledTracks = useMemo(() => shuffleTracks(onlineTracks, shuffleKey), [onlineTracks, shuffleKey]);
+  const activeTracks = shuffledTracks.length ? shuffledTracks : [placeholderTrack];
   const safeIndex = currentIndex % activeTracks.length;
   const currentTrack = activeTracks[safeIndex];
   const isRunning = sessionState === 'running';
-  const isCatalogLoading = musicSource === 'audius' && catalogStatus === 'loading';
+  const isCatalogLoading = catalogStatus === 'loading';
 
   const queue = useMemo(() => {
     const result: { track: Track; sourceIndex: number; duration: number; queueIndex: number }[] = [];
+    if (!isAudiusReady) return { items: result, total: 0 };
     let total = 0;
     let cursor = 0;
     const target = selectedMinutes * 60;
@@ -195,7 +182,7 @@ export default function Home() {
       cursor += 1;
     }
     return { items: result, total };
-  }, [activeTracks, knownDurations, selectedMinutes]);
+  }, [activeTracks, isAudiusReady, knownDurations, selectedMinutes]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -274,7 +261,7 @@ export default function Home() {
       await audio.play();
       setSessionState('running');
     } catch {
-      if (currentTrack.source === 'audius') setCatalogStatus('error');
+      setCatalogStatus('error');
       setSessionState('paused');
     }
     setIsStarting(false);
@@ -319,16 +306,6 @@ export default function Home() {
     if (!nextMuted) playAnalogClick(false, 'firm');
   };
 
-  const chooseSource = (source: MusicSource) => {
-    if (source === musicSource || isRunning || isStarting) return;
-    playAnalogClick(muted, 'firm');
-    audioRef.current?.pause();
-    setSessionState('idle');
-    setSecondsLeft(selectedMinutes * 60);
-    setCurrentIndex(0);
-    setMusicSource(source);
-  };
-
   const chooseMood = (nextGenre: string) => {
     if (nextGenre === genre || isRunning || isStarting) return;
     playAnalogClick(muted);
@@ -350,11 +327,11 @@ export default function Home() {
   };
 
   const labelStyle = currentTrack.artwork ? { '--label-art': `url("${currentTrack.artwork}")` } as CSSProperties : undefined;
-  const sourceLabel = isAudiusReady ? 'AUDIUS' : musicSource === 'audius' && catalogStatus === 'error' ? 'LOCAL BACKUP' : 'MY RECORDS';
+  const sourceLabel = 'AUDIUS';
 
   return (
     <main className="app-shell">
-      <audio ref={audioRef} src={currentTrack.src} muted={muted} onEnded={() => changeTrack(1, false)} onError={() => { if (currentTrack.source === 'audius') { setCatalogStatus('error'); setCurrentIndex(0); } }} onLoadedMetadata={handleMetadata} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} />
+      <audio ref={audioRef} src={isAudiusReady ? currentTrack.src : undefined} muted={muted} onEnded={() => changeTrack(1, false)} onError={() => { setCatalogStatus('error'); setCurrentIndex(0); }} onLoadedMetadata={handleMetadata} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} />
       <audio ref={powerRef} src="/audio/sounds/turning-on-the-gramophone.mp3" muted={muted} preload="auto" />
 
       <header className="topbar">
@@ -369,7 +346,7 @@ export default function Home() {
           <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
             <div className="platter"><div className="record"><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
             <div className="tonearm"><span className="pivot" /><span className="arm" /><span className="needle" /></div>
-            <button className="power" onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
+            <button className="power" disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
             <div className="speed-switch" aria-hidden="true"><i /><small>33</small><small>45</small></div>
           </div>
 
@@ -382,7 +359,7 @@ export default function Home() {
           <div className="controls">
             <button aria-label="Restart track" onClick={() => { playAnalogClick(muted); if (audioRef.current) audioRef.current.currentTime = 0; }}><RotateCcw /></button>
             <button aria-label="Previous track" onClick={() => changeTrack(-1)}><SkipBack /></button>
-            <button disabled={isCatalogLoading} className="primary-control" aria-label={isRunning ? 'Pause session' : 'Play session'} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
+            <button disabled={!isAudiusReady || isStarting} className="primary-control" aria-label={isRunning ? 'Pause session' : 'Play session'} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
             <button aria-label="Next track" onClick={() => changeTrack(1)}><SkipForward /></button>
             <button aria-label={muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>{muted ? <VolumeX /> : <Volume2 />}</button>
           </div>
@@ -390,21 +367,18 @@ export default function Home() {
 
         <aside className="focus-panel">
           <div className="catalog-controls">
-            <div className="source-switch" aria-label="Music source">
-              <button disabled={isRunning || isStarting} className={musicSource === 'audius' ? 'active' : ''} onClick={() => chooseSource('audius')}><Cloud /> AUDIUS</button>
-              <button disabled={isRunning || isStarting} className={musicSource === 'local' ? 'active' : ''} onClick={() => chooseSource('local')}><Disc3 /> MY RECORDS</button>
-            </div>
-            {musicSource === 'audius' && <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>}
-            {musicSource === 'audius' && <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — PLAYING LOCAL BACKUP' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>}
+            <div className="catalog-title"><Cloud /> AUDIUS CATALOG</div>
+            <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting || !isAudiusReady} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>
+            <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — TAP REFRESH TO RETRY' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>
           </div>
 
           <div className="timer-head"><div><p>FOCUS TIMER</p><h2 aria-live="polite">{formatTime(secondsLeft)}</h2></div><button disabled={isStarting} aria-label="Reset timer" onClick={resetSession}><RotateCcw /></button></div>
           <div className="presets" aria-label="Focus duration">{[5, 10, 15, 25, 45, 60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => setMinutes(minutes)}>{minutes}</button>)}</div>
           <label className="custom-time"><span>Custom</span><input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="minutes" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} /><small>MIN</small></label>
-          <button disabled={isStarting || isCatalogLoading} className={`start-button ${isRunning ? 'active' : ''} ${isStarting || isCatalogLoading ? 'starting' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isCatalogLoading ? 'TUNING INTO AUDIUS…' : isStarting ? 'DROPPING THE NEEDLE…' : isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
+          <button disabled={isStarting || !isAudiusReady} className={`start-button ${isRunning ? 'active' : ''} ${isStarting || !isAudiusReady ? 'starting' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isCatalogLoading ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'REFRESH AUDIUS ABOVE' : isStarting ? 'DROPPING THE NEEDLE…' : isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
           <p className="startup-note"><span /> Needle drop plays before every new session</p>
 
-          <div className="playlist-head"><div><p>YOUR SESSION</p><h3>{isAudiusReady ? `${genre} flow` : 'Focus flow'}</h3></div><span>{formatTime(queue.total)} · {queue.items.length} TRACKS</span></div>
+          <div className="playlist-head"><div><p>YOUR SESSION</p><h3>{isAudiusReady ? `${genre} flow` : 'Finding your flow'}</h3></div><span>{formatTime(queue.total)} · {queue.items.length} TRACKS</span></div>
           <ol className="playlist">{queue.items.map(({ track, sourceIndex, duration: trackDuration, queueIndex }) => <li className={sourceIndex === safeIndex ? 'playing' : ''} key={`${track.id}-${queueIndex}`}><button onClick={() => selectTrack(sourceIndex)} aria-label={`Play ${track.title} by ${track.artist}`}><span className="track-index">{String(queueIndex + 1).padStart(2, '0')}</span><span className="track-copy"><strong>{track.title}</strong><small>{track.artist}</small></span><time>{formatTime(trackDuration)}</time></button></li>)}</ol>
           <p className="queue-note"><span /> The last track fades when your focus session ends.</p>
         </aside>

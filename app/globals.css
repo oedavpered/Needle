@@ -72,6 +72,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
 .needle { position: absolute; width: 39px; height: 26px; right: 26%; bottom: 1%; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; background: linear-gradient(135deg, #77787c, #232326); transform: rotate(18deg); }
 .power { position: absolute; z-index: 4; left: 5%; bottom: 5%; display: flex; align-items: center; gap: 9px; padding: 0; border: 0; background: transparent; color: #55555a; font: 700 8px ui-monospace, monospace; }
 .power i { display: block; width: 25px; height: 48px; border: 1px solid #28282c; border-radius: 12px; background: linear-gradient(90deg, #262629, #7e7f84 52%, #232326); box-shadow: 0 3px 6px rgba(0,0,0,.28); transform: rotate(-3deg); }
+.power:disabled { cursor: wait; opacity: .58; }
 .speed-switch { position: absolute; z-index: 4; right: 6%; bottom: 5%; display: grid; grid-template-columns: auto 15px; grid-template-rows: repeat(2, 1fr); gap: 1px 8px; color: #66666b; font: 700 7px ui-monospace, monospace; }
 .speed-switch i { grid-row: 1 / 3; width: 25px; height: 47px; border-radius: 9px; background: linear-gradient(90deg, #252529, #64656a 50%, #202024); box-shadow: 0 3px 6px rgba(0,0,0,.25); }.speed-switch small { align-self: center; }
 
@@ -87,14 +88,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
 .time-row { display: flex; justify-content: space-between; margin-top: 0; color: #8d8992; font: 700 9px ui-monospace, monospace; }
 .controls { display: flex; align-items: center; justify-content: center; gap: clamp(15px, 3vw, 32px); margin-top: 9px; }
 .controls button { width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; transition: background .2s, transform .2s; }.controls button:hover { background: rgba(255,255,255,.72); transform: translateY(-1px); }.controls svg { width: 19px; }.controls .primary-control { width: 66px; height: 66px; border: 2px solid #201e23; background: rgba(255,255,255,.45); }.controls .primary-control:hover { color: #fff; background: #201e23; }.controls .primary-control svg { width: 24px; margin-left: 2px; }
+.controls button:disabled { cursor: wait; opacity: .45; transform: none; }
 
 .focus-panel { align-self: start; margin-top: 24px; padding: 30px; border: 1px solid rgba(255,255,255,.92); border-radius: 28px; background: var(--panel); box-shadow: 0 24px 60px rgba(70,53,91,.12), inset 0 0 0 1px var(--line); backdrop-filter: blur(20px); }
 .catalog-controls { margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
-.source-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 4px; border-radius: 14px; background: rgba(32,29,36,.06); }
-.source-switch button { height: 37px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; color: #8c8791; background: transparent; font: 800 9px ui-monospace, monospace; letter-spacing: .08em; transition: background .2s, color .2s, box-shadow .2s; }
-.source-switch button.active { color: #242127; background: rgba(255,255,255,.92); box-shadow: 0 4px 12px rgba(54,45,64,.09); }
-.source-switch button:disabled, .moods button:disabled, .refresh-catalog:disabled { cursor: not-allowed; opacity: .55; }
-.source-switch svg { width: 14px; }
+.catalog-title { height: 37px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; color: #242127; background: rgba(255,255,255,.86); box-shadow: 0 4px 12px rgba(54,45,64,.08); font: 800 9px ui-monospace, monospace; letter-spacing: .1em; }
+.catalog-title svg { width: 14px; color: var(--violet); }
+.moods button:disabled, .refresh-catalog:disabled { cursor: not-allowed; opacity: .55; }
 .mood-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px 34px; gap: 8px; margin-top: 12px; }
 .moods { display: flex; gap: 5px; min-width: 0; }
 .moods button { flex: 1 1 0; min-width: 0; height: 31px; padding: 0 5px; border: 1px solid var(--line); border-radius: 9px; color: #8b8690; background: rgba(255,255,255,.42); font: 750 7px ui-monospace, monospace; letter-spacing: .04em; transition: color .2s, border-color .2s, background .2s; }

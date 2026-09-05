@@ -36,6 +36,3 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
-
-# Audio masters stay local; the validated deployment archive includes them.
-/public/audio/tracks/*.mp3
