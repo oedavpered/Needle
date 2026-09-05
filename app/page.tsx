@@ -53,6 +53,47 @@ function playFinishChime() {
   window.setTimeout(() => void context.close(), 1500);
 }
 
+function playAnalogClick(muted: boolean, weight: 'light' | 'firm' = 'light') {
+  if (muted) return;
+  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  const context = new AudioContextClass();
+  const now = context.currentTime;
+  const master = context.createGain();
+  master.gain.value = weight === 'firm' ? 0.62 : 0.46;
+  master.connect(context.destination);
+
+  const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.045), context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    const envelope = 1 - index / data.length;
+    data[index] = (Math.random() * 2 - 1) * envelope * envelope;
+  }
+  const snap = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const snapGain = context.createGain();
+  snap.buffer = buffer;
+  filter.type = 'bandpass';
+  filter.frequency.value = weight === 'firm' ? 920 : 1320;
+  filter.Q.value = 0.75;
+  snapGain.gain.setValueAtTime(0.09, now);
+  snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+  snap.connect(filter).connect(snapGain).connect(master);
+
+  const thud = context.createOscillator();
+  const thudGain = context.createGain();
+  thud.type = 'triangle';
+  thud.frequency.setValueAtTime(weight === 'firm' ? 165 : 220, now);
+  thud.frequency.exponentialRampToValueAtTime(82, now + 0.07);
+  thudGain.gain.setValueAtTime(weight === 'firm' ? 0.11 : 0.075, now);
+  thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+  thud.connect(thudGain).connect(master);
+  snap.start(now);
+  thud.start(now);
+  thud.stop(now + 0.08);
+  window.setTimeout(() => void context.close(), 180);
+}
+
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const powerRef = useRef<HTMLAudioElement>(null);
@@ -111,6 +152,7 @@ export default function Home() {
 
   const setMinutes = (minutes: number) => {
     if (sessionState === 'running') return;
+    playAnalogClick(muted, 'firm');
     const value = Math.min(180, Math.max(1, minutes));
     setSelectedMinutes(value);
     setSecondsLeft(value * 60);
@@ -121,10 +163,12 @@ export default function Home() {
     const audio = audioRef.current;
     if (!audio || isStarting) return;
     if (sessionState === 'running') {
+      playAnalogClick(muted, 'firm');
       audio.pause();
       setSessionState('paused');
       return;
     }
+    if (sessionState === 'paused') playAnalogClick(muted, 'firm');
     if (sessionState === 'finished' || secondsLeft === 0) setSecondsLeft(selectedMinutes * 60);
     if (sessionState === 'idle' || sessionState === 'finished') {
       const power = powerRef.current;
@@ -164,6 +208,7 @@ export default function Home() {
   };
 
   const resetSession = () => {
+    playAnalogClick(muted, 'firm');
     audioRef.current?.pause();
     if (audioRef.current) audioRef.current.currentTime = 0;
     setCurrentTime(0);
@@ -172,15 +217,17 @@ export default function Home() {
     setFinishOpen(false);
   };
 
-  const changeTrack = (direction: number) => {
+  const changeTrack = (direction: number, withSound = true) => {
+    if (withSound) playAnalogClick(muted);
     setCurrentIndex((index) => (index + direction + tracks.length) % tracks.length);
   };
 
   const selectTrack = (index: number) => {
+    playAnalogClick(muted);
     setCurrentIndex(index);
   };
 
-  const handleEnded = () => changeTrack(1);
+  const handleEnded = () => changeTrack(1, false);
   const handleMetadata = () => {
     const audio = audioRef.current;
     if (!audio || !Number.isFinite(audio.duration)) return;
@@ -194,6 +241,12 @@ export default function Home() {
     setCustomMinutes('');
   };
 
+  const toggleMute = () => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    if (!nextMuted) playAnalogClick(false, 'firm');
+  };
+
   return (
     <main className="app-shell">
       <audio ref={audioRef} src={sourceFor(currentTrack.file)} muted={muted} onEnded={handleEnded} onLoadedMetadata={handleMetadata} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} />
@@ -202,7 +255,7 @@ export default function Home() {
       <header className="topbar">
         <a className="brand" href="#" aria-label="Needle home"><span className="brand-dot" /> NEEDLE</a>
         <nav className="session-nav" aria-label="Player sections"><span>FOR YOU</span><strong>MUSIC</strong><span>SESSION</span></nav>
-        <button className="sound-button" aria-label={muted ? 'Turn sound on' : 'Mute sound'} onClick={() => setMuted((value) => !value)}>
+        <button className="sound-button" aria-label={muted ? 'Turn sound on' : 'Mute sound'} onClick={toggleMute}>
           {muted ? <VolumeX /> : <Volume2 />}
         </button>
       </header>
@@ -221,28 +274,28 @@ export default function Home() {
             <div><p>TRACK {String(currentIndex + 1).padStart(2, '0')} / {String(tracks.length).padStart(2, '0')}</p><h1>{currentTrack.title}</h1><span>{currentTrack.artist}</span><div className="track-tags"><b>FOCUS MIX</b><b>VINYL</b><b>{tracks.length} TRACKS</b></div></div>
             <div className={`eq ${isRunning ? 'moving' : ''}`} aria-hidden="true"><i/><i/><i/><i/><i/><i/></div>
           </div>
-          <input className="progress-range" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} aria-label="Track position" onChange={(event) => { const next = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = next; setCurrentTime(next); }} style={{ '--progress': `${duration ? (currentTime / duration) * 100 : 0}%` } as CSSProperties} />
+          <input className="progress-range" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} aria-label="Track position" onPointerDown={() => playAnalogClick(muted)} onChange={(event) => { const next = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = next; setCurrentTime(next); }} style={{ '--progress': `${duration ? (currentTime / duration) * 100 : 0}%` } as CSSProperties} />
           <div className="time-row"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
           <div className="controls">
-            <button aria-label="Restart track" onClick={() => { if (audioRef.current) audioRef.current.currentTime = 0; }}><RotateCcw /></button>
+            <button aria-label="Restart track" onClick={() => { playAnalogClick(muted); if (audioRef.current) audioRef.current.currentTime = 0; }}><RotateCcw /></button>
             <button aria-label="Previous track" onClick={() => changeTrack(-1)}><SkipBack /></button>
             <button className="primary-control" aria-label={isRunning ? 'Pause session' : 'Play session'} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
             <button aria-label="Next track" onClick={() => changeTrack(1)}><SkipForward /></button>
-            <button aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((value) => !value)}>{muted ? <VolumeX /> : <Volume2 />}</button>
+            <button aria-label={muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>{muted ? <VolumeX /> : <Volume2 />}</button>
           </div>
         </div>
 
         <aside className="focus-panel">
           <div className="timer-head">
             <div><p>FOCUS TIMER</p><h2 aria-live="polite">{formatTime(secondsLeft)}</h2></div>
-            <button aria-label="Reset timer" onClick={resetSession}><RotateCcw /></button>
+            <button disabled={isStarting} aria-label="Reset timer" onClick={resetSession}><RotateCcw /></button>
           </div>
           <div className="presets" aria-label="Focus duration">
             {[5, 10, 15, 25, 45, 60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => setMinutes(minutes)}>{minutes}</button>)}
           </div>
           <label className="custom-time">
             <span>Custom</span>
-            <input disabled={isRunning} type="number" min="1" max="180" inputMode="numeric" placeholder="minutes" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} />
+            <input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="minutes" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} />
             <small>MIN</small>
           </label>
           <button disabled={isStarting} className={`start-button ${isRunning ? 'active' : ''} ${isStarting ? 'starting' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isStarting ? 'DROPPING THE NEEDLE…' : isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
