@@ -95,7 +95,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
 .source-switch button.active { color: #242127; background: rgba(255,255,255,.92); box-shadow: 0 4px 12px rgba(54,45,64,.09); }
 .source-switch button:disabled, .moods button:disabled, .refresh-catalog:disabled { cursor: not-allowed; opacity: .55; }
 .source-switch svg { width: 14px; }
-.mood-row { display: grid; grid-template-columns: 1fr 34px; gap: 8px; margin-top: 12px; }
+.mood-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px 34px; gap: 8px; margin-top: 12px; }
 .moods { display: flex; gap: 5px; min-width: 0; }
 .moods button { flex: 1 1 0; min-width: 0; height: 31px; padding: 0 5px; border: 1px solid var(--line); border-radius: 9px; color: #8b8690; background: rgba(255,255,255,.42); font: 750 7px ui-monospace, monospace; letter-spacing: .04em; transition: color .2s, border-color .2s, background .2s; }
 .moods button:hover:not(:disabled), .moods button.active { color: var(--violet); border-color: rgba(124,94,170,.34); background: rgba(184,155,226,.12); }

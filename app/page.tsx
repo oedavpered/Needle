@@ -9,6 +9,7 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
+  Shuffle,
   SkipBack,
   SkipForward,
   Volume2,
@@ -341,6 +342,13 @@ export default function Home() {
     setRefreshKey((value) => value + 1);
   };
 
+  const randomizeQueue = () => {
+    if (isRunning || isStarting) return;
+    playAnalogClick(muted, 'firm');
+    setShuffleKey((key) => key + 1);
+    setCurrentIndex(0);
+  };
+
   const labelStyle = currentTrack.artwork ? { '--label-art': `url("${currentTrack.artwork}")` } as CSSProperties : undefined;
   const sourceLabel = isAudiusReady ? 'AUDIUS' : musicSource === 'audius' && catalogStatus === 'error' ? 'LOCAL BACKUP' : 'MY RECORDS';
 
@@ -386,7 +394,7 @@ export default function Home() {
               <button disabled={isRunning || isStarting} className={musicSource === 'audius' ? 'active' : ''} onClick={() => chooseSource('audius')}><Cloud /> AUDIUS</button>
               <button disabled={isRunning || isStarting} className={musicSource === 'local' ? 'active' : ''} onClick={() => chooseSource('local')}><Disc3 /> MY RECORDS</button>
             </div>
-            {musicSource === 'audius' && <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>}
+            {musicSource === 'audius' && <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>}
             {musicSource === 'audius' && <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — PLAYING LOCAL BACKUP' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>}
           </div>
 
