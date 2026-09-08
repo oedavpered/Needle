@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   BellRing,
   Cloud,
@@ -348,15 +348,26 @@ export default function Home() {
       '--vinyl-hue-b': `${(tone + 96 + phase * 0.42) % 360}`,
       '--vinyl-hue-c': `${(tone + 214 - phase * 0.28 + 360) % 360}`,
       '--vinyl-angle': `${(tone * 0.7 + phase) % 360}deg`,
-      '--vinyl-glow': `${0.52 + pulse * 0.18}`,
-      '--vinyl-glow-soft': `${0.34 + pulse * 0.16}`,
-      '--vinyl-glow-faint': `${0.2 + pulse * 0.1}`,
+      '--vinyl-glow': `${0.2 + pulse * 0.08}`,
+      '--vinyl-glow-soft': `${0.13 + pulse * 0.06}`,
+      '--vinyl-glow-faint': `${0.08 + pulse * 0.04}`,
       '--vinyl-x': `${driftX}%`,
       '--vinyl-y': `${driftY}%`,
       '--vinyl-x-alt': `${100 - driftX * 0.72}%`,
       '--vinyl-y-alt': `${100 - driftY * 0.66}%`,
     } as CSSProperties;
   }, [currentTime, currentTrack, isRunning]);
+  const moveVinylGlow = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+    const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+    event.currentTarget.style.setProperty('--pointer-x', `${x}%`);
+    event.currentTarget.style.setProperty('--pointer-y', `${y}%`);
+    event.currentTarget.style.setProperty('--pointer-opacity', '.92');
+  };
+  const restVinylGlow = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.style.setProperty('--pointer-opacity', '.1');
+  };
   const sourceLabel = 'AUDIUS';
 
   return (
@@ -374,7 +385,7 @@ export default function Home() {
         <div className="player-column">
           <div className="eyebrow">NOW SPINNING · {String(safeIndex + 1).padStart(2, '0')} · {sourceLabel}</div>
           <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
-            <div className="platter"><div className="record" style={vinylStyle}><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
+            <div className="platter"><div className="record" style={vinylStyle} onPointerMove={moveVinylGlow} onPointerLeave={restVinylGlow}><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
             <div className="tonearm"><span className="pivot" /><span className="arm" /><span className="needle" /></div>
             <button className="power" disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
             <div className="speed-switch" aria-hidden="true"><i /><small>33</small><small>45</small></div>
