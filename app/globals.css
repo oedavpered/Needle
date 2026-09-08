@@ -161,13 +161,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
 .volume-knob input { position:absolute; inset:-5px; width:calc(100% + 10px); height:calc(100% + 10px); opacity:0; cursor:grab; }
 @media (max-width:800px) {
   .turntable { aspect-ratio:.62; }
-  .deck-console { top:auto; height:36%; }
+  .deck-console { top:auto; left:5%; right:auto; bottom:3%; width:90% !important; height:36%; box-sizing:border-box; }
   .dial-zone { margin-top:55px; }
   .console-bottom { grid-column:2; grid-row:3; margin:0; }
 }
 @media (max-width:520px) {
   .turntable { aspect-ratio:.56; }
-  .deck-console { height:39%; }
+  .deck-console { left:3%; right:auto; width:94% !important; height:39%; }
   .timer-window strong { font-size:31px; }
   .volume-knob { width:36px; }
 }
