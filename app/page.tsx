@@ -341,14 +341,20 @@ export default function Home() {
     const tone = hashTrack(currentTrack) % 360;
     const phase = isRunning ? currentTime * 4.8 : 0;
     const pulse = isRunning ? (Math.sin(currentTime * 1.9 + tone) + 1) / 2 : 0.22;
+    const driftX = 52 + Math.sin(currentTime * 0.31 + tone) * 18;
+    const driftY = 42 + Math.cos(currentTime * 0.27 + tone * 0.5) * 20;
     return {
       '--vinyl-hue-a': `${(tone + phase) % 360}`,
       '--vinyl-hue-b': `${(tone + 96 + phase * 0.42) % 360}`,
       '--vinyl-hue-c': `${(tone + 214 - phase * 0.28 + 360) % 360}`,
       '--vinyl-angle': `${(tone * 0.7 + phase) % 360}deg`,
-      '--vinyl-glow': `${0.16 + pulse * 0.24}`,
-      '--vinyl-glow-soft': `${0.11 + pulse * 0.18}`,
-      '--vinyl-glow-faint': `${0.08 + pulse * 0.12}`,
+      '--vinyl-glow': `${0.52 + pulse * 0.18}`,
+      '--vinyl-glow-soft': `${0.34 + pulse * 0.16}`,
+      '--vinyl-glow-faint': `${0.2 + pulse * 0.1}`,
+      '--vinyl-x': `${driftX}%`,
+      '--vinyl-y': `${driftY}%`,
+      '--vinyl-x-alt': `${100 - driftX * 0.72}%`,
+      '--vinyl-y-alt': `${100 - driftY * 0.66}%`,
     } as CSSProperties;
   }, [currentTime, currentTrack, isRunning]);
   const sourceLabel = 'AUDIUS';
