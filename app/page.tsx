@@ -9,7 +9,6 @@ import {
   RefreshCw,
   RotateCcw,
   Shuffle,
-  SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
@@ -128,6 +127,31 @@ function playAnalogClick(muted: boolean, weight: 'light' | 'firm' = 'light') {
   window.setTimeout(() => void context.close(), 180);
 }
 
+function playMechanism(muted: boolean, kind: 'dial' | 'plunger') {
+  if (muted) return;
+  const AudioContextClass = getAudioContext();
+  if (!AudioContextClass) return;
+  const context = new AudioContextClass();
+  const now = context.currentTime;
+  const master = context.createGain();
+  master.gain.value = kind === 'plunger' ? .6 : .34;
+  master.connect(context.destination);
+  const hits = kind === 'dial' ? [0, .022, .044] : [0, .065];
+  hits.forEach((delay, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = index ? 'triangle' : 'square';
+    oscillator.frequency.setValueAtTime(kind === 'dial' ? 1100 - index * 170 : 150 - index * 55, now + delay);
+    oscillator.frequency.exponentialRampToValueAtTime(kind === 'dial' ? 420 : 48, now + delay + .055);
+    gain.gain.setValueAtTime(kind === 'dial' ? .045 : .12, now + delay);
+    gain.gain.exponentialRampToValueAtTime(.001, now + delay + .07);
+    oscillator.connect(gain).connect(master);
+    oscillator.start(now + delay);
+    oscillator.stop(now + delay + .075);
+  });
+  window.setTimeout(() => void context.close(), 260);
+}
+
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const powerRef = useRef<HTMLAudioElement>(null);
@@ -217,15 +241,23 @@ export default function Home() {
     if (isRunning) void audio.play().catch(() => setSessionState('paused'));
   }, [currentTrack.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setMinutes = (minutes: number) => {
+  const setMinutes = (minutes: number, withSound = true) => {
     if (isRunning || isStarting) return;
-    playAnalogClick(muted, 'firm');
+    if (withSound) playAnalogClick(muted, 'firm');
     const value = Math.min(180, Math.max(1, minutes));
     setSelectedMinutes(value);
     setSecondsLeft(value * 60);
     setSessionState('idle');
     setShuffleKey((key) => key + 1);
     setCurrentIndex(0);
+  };
+
+  const cycleTimer = () => {
+    if (isRunning || isStarting) return;
+    const values = [5, 10, 15, 25, 45, 60];
+    const current = values.indexOf(selectedMinutes);
+    playMechanism(muted, 'dial');
+    setMinutes(values[(current < 0 ? 0 : current + 1) % values.length], false);
   };
 
   const startOrToggle = async () => {
@@ -290,6 +322,11 @@ export default function Home() {
   const changeTrack = (direction: number, withSound = true) => {
     if (withSound) playAnalogClick(muted);
     setCurrentIndex((index) => (index + direction + activeTracks.length) % activeTracks.length);
+  };
+
+  const plungeNext = () => {
+    playMechanism(muted, 'plunger');
+    changeTrack(1, false);
   };
 
   const selectTrack = (index: number) => {
@@ -383,12 +420,29 @@ export default function Home() {
 
       <section className="workspace">
         <div className="player-column">
+          <div className="catalog-controls">
+            <div className="catalog-title"><Cloud /> AUDIUS CATALOG</div>
+            <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting || !isAudiusReady} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>
+            <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — TAP REFRESH TO RETRY' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>
+          </div>
           <div className="eyebrow">NOW SPINNING · {String(safeIndex + 1).padStart(2, '0')} · {sourceLabel}</div>
           <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
             <div className="platter"><div className="record" style={vinylStyle} onPointerMove={moveVinylGlow} onPointerLeave={restVinylGlow}><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
             <div className="tonearm"><span className="pivot" /><span className="arm" /><span className="needle" /></div>
-            <button className="power" disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
-            <div className="speed-switch" aria-hidden="true"><i /><small>33</small><small>45</small></div>
+            <div className="deck-console">
+              <div className="console-label"><span>NEEDLE</span><small>FOCUS DECK / NF-25</small></div>
+              <div className="timer-window"><small>FOCUS REMAINING</small><strong aria-live="polite">{formatTime(secondsLeft)}</strong></div>
+              <div className="dial-zone">
+                <button className="timer-knob" disabled={isRunning || isStarting} onClick={cycleTimer} aria-label={`Focus timer ${selectedMinutes} minutes. Turn to change`} style={{ '--dial-angle': `${-125 + ([5,10,15,25,45,60].indexOf(selectedMinutes) < 0 ? 3 : [5,10,15,25,45,60].indexOf(selectedMinutes)) * 50}deg` } as CSSProperties}><i /></button>
+                <div className="dial-legend">{[5,10,15,25,45,60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => { playMechanism(muted, 'dial'); setMinutes(minutes, false); }}>{minutes}</button>)}</div>
+              </div>
+              <div className="transport-deck">
+                <button className={`play-toggle ${isRunning ? 'active' : ''}`} disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause session' : 'Play session'}><span>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</span><small>{isStarting ? 'STARTING' : isRunning ? 'PAUSE' : 'PLAY'}</small></button>
+                <button className="next-plunger" disabled={!isAudiusReady} onClick={plungeNext} aria-label="Next track"><span><SkipForward /></span><small>NEXT</small></button>
+                <button className="reset-toggle" disabled={isStarting} onClick={resetSession} aria-label="Reset timer"><RotateCcw /><small>RESET</small></button>
+              </div>
+              <label className="custom-time"><span>CUSTOM</span><input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="MIN" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} /></label>
+            </div>
           </div>
 
           <div className="track-heading">
@@ -397,32 +451,12 @@ export default function Home() {
           </div>
           <input className="progress-range" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} aria-label="Track position" onPointerDown={() => playAnalogClick(muted)} onChange={(event) => { const next = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = next; setCurrentTime(next); }} style={{ '--progress': `${duration ? (currentTime / duration) * 100 : 0}%` } as CSSProperties} />
           <div className="time-row"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
-          <div className="controls">
-            <button aria-label="Restart track" onClick={() => { playAnalogClick(muted); if (audioRef.current) audioRef.current.currentTime = 0; }}><RotateCcw /></button>
-            <button aria-label="Previous track" onClick={() => changeTrack(-1)}><SkipBack /></button>
-            <button disabled={!isAudiusReady || isStarting} className="primary-control" aria-label={isRunning ? 'Pause session' : 'Play session'} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
-            <button aria-label="Next track" onClick={() => changeTrack(1)}><SkipForward /></button>
-            <button aria-label={muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>{muted ? <VolumeX /> : <Volume2 />}</button>
-          </div>
-        </div>
-
-        <aside className="focus-panel">
-          <div className="catalog-controls">
-            <div className="catalog-title"><Cloud /> AUDIUS CATALOG</div>
-            <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting || !isAudiusReady} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>
-            <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — TAP REFRESH TO RETRY' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>
-          </div>
-
-          <div className="timer-head"><div><p>FOCUS TIMER</p><h2 aria-live="polite">{formatTime(secondsLeft)}</h2></div><button disabled={isStarting} aria-label="Reset timer" onClick={resetSession}><RotateCcw /></button></div>
-          <div className="presets" aria-label="Focus duration">{[5, 10, 15, 25, 45, 60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => setMinutes(minutes)}>{minutes}</button>)}</div>
-          <label className="custom-time"><span>Custom</span><input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="minutes" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} /><small>MIN</small></label>
-          <button disabled={isStarting || !isAudiusReady} className={`start-button ${isRunning ? 'active' : ''} ${isStarting || !isAudiusReady ? 'starting' : ''}`} onClick={startOrToggle}>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {isCatalogLoading ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'REFRESH AUDIUS ABOVE' : isStarting ? 'DROPPING THE NEEDLE…' : isRunning ? 'PAUSE FOCUS' : sessionState === 'paused' ? 'RESUME FOCUS' : 'START FOCUS'}</button>
-          <p className="startup-note"><span /> Needle drop plays before every new session</p>
-
+          <aside className="focus-panel">
           <div className="playlist-head"><div><p>YOUR SESSION</p><h3>{isAudiusReady ? `${genre} flow` : 'Finding your flow'}</h3></div><span>{formatTime(queue.total)} · {queue.items.length} TRACKS</span></div>
           <ol className="playlist">{queue.items.map(({ track, sourceIndex, duration: trackDuration, queueIndex }) => <li className={sourceIndex === safeIndex ? 'playing' : ''} key={`${track.id}-${queueIndex}`}><button onClick={() => selectTrack(sourceIndex)} aria-label={`Play ${track.title} by ${track.artist}`}><span className="track-index">{String(queueIndex + 1).padStart(2, '0')}</span><span className="track-copy"><strong>{track.title}</strong><small>{track.artist}</small></span><time>{formatTime(trackDuration)}</time></button></li>)}</ol>
           <p className="queue-note"><span /> The last track fades when your focus session ends.</p>
-        </aside>
+          </aside>
+        </div>
       </section>
 
       {finishOpen && <div className="finish-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setFinishOpen(false); }}><section className="finish-dialog" role="alertdialog" aria-modal="true" aria-labelledby="finish-title" aria-describedby="finish-description"><div className="finish-icon"><BellRing /></div><h2 id="finish-title">Focus session complete</h2><p id="finish-description">You gave this moment your full attention. Take a breath before the next spin.</p><button autoFocus onClick={resetSession}>START ANOTHER SESSION</button></section></div>}
