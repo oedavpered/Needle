@@ -55,6 +55,16 @@ function shuffleTracks(tracks: Track[], seed: number) {
   return shuffled;
 }
 
+function hashTrack(track: Track) {
+  const value = `${track.id}:${track.artist}:${track.title}`;
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0);
+}
+
 function getAudioContext() {
   return window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 }
@@ -327,6 +337,20 @@ export default function Home() {
   };
 
   const labelStyle = currentTrack.artwork ? { '--label-art': `url("${currentTrack.artwork}")` } as CSSProperties : undefined;
+  const vinylStyle = useMemo(() => {
+    const tone = hashTrack(currentTrack) % 360;
+    const phase = isRunning ? currentTime * 4.8 : 0;
+    const pulse = isRunning ? (Math.sin(currentTime * 1.9 + tone) + 1) / 2 : 0.22;
+    return {
+      '--vinyl-hue-a': `${(tone + phase) % 360}`,
+      '--vinyl-hue-b': `${(tone + 96 + phase * 0.42) % 360}`,
+      '--vinyl-hue-c': `${(tone + 214 - phase * 0.28 + 360) % 360}`,
+      '--vinyl-angle': `${(tone * 0.7 + phase) % 360}deg`,
+      '--vinyl-glow': `${0.16 + pulse * 0.24}`,
+      '--vinyl-glow-soft': `${0.11 + pulse * 0.18}`,
+      '--vinyl-glow-faint': `${0.08 + pulse * 0.12}`,
+    } as CSSProperties;
+  }, [currentTime, currentTrack, isRunning]);
   const sourceLabel = 'AUDIUS';
 
   return (
@@ -344,7 +368,7 @@ export default function Home() {
         <div className="player-column">
           <div className="eyebrow">NOW SPINNING · {String(safeIndex + 1).padStart(2, '0')} · {sourceLabel}</div>
           <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
-            <div className="platter"><div className="record"><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
+            <div className="platter"><div className="record" style={vinylStyle}><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
             <div className="tonearm"><span className="pivot" /><span className="arm" /><span className="needle" /></div>
             <button className="power" disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause player' : 'Start player'}><i /><small>{isRunning ? 'ON' : 'OFF'}</small></button>
             <div className="speed-switch" aria-hidden="true"><i /><small>33</small><small>45</small></div>
