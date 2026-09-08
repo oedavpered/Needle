@@ -147,6 +147,30 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
   .timer-head h2 { font-size: 48px; }
   .playlist-head > span { max-width: 92px; text-align: right; }
 }
+
+/* Instrument panel refinements */
+.deck-console { top:3%; right:2.5%; bottom:3%; width:28%; }
+.timer-window { min-height:84px; padding:12px 14px; }
+.timer-window strong { margin-top:5px; font-size:clamp(34px,4vw,54px); letter-spacing:-.09em; }
+.dial-legend { inset:10% 12%; }
+.console-bottom { display:grid; grid-template-columns:1fr auto; align-items:end; gap:12px; margin-top:12px; }
+.deck-console .custom-time { height:34px; margin:0; }
+.volume-control { display:flex; flex-direction:column; align-items:center; gap:4px; color:#414147; font:800 6px ui-monospace,monospace; letter-spacing:.12em; }
+.volume-knob { position:relative; width:42px; aspect-ratio:1; display:block; border:1px solid #333338; border-radius:50%; background:repeating-conic-gradient(#38383c 0 6deg,#84858a 7deg 10deg); box-shadow:0 5px 7px rgba(0,0,0,.28),inset 0 0 0 5px rgba(255,255,255,.14); transform:rotate(var(--volume-angle)); transition:transform .18s ease-out; }
+.volume-knob i { position:absolute; left:50%; top:4px; width:2px; height:12px; background:#fff; transform:translateX(-50%); }
+.volume-knob input { position:absolute; inset:-5px; width:calc(100% + 10px); height:calc(100% + 10px); opacity:0; cursor:grab; }
+@media (max-width:800px) {
+  .turntable { aspect-ratio:.62; }
+  .deck-console { top:auto; height:36%; }
+  .dial-zone { margin-top:55px; }
+  .console-bottom { grid-column:2; grid-row:3; margin:0; }
+}
+@media (max-width:520px) {
+  .turntable { aspect-ratio:.56; }
+  .deck-console { height:39%; }
+  .timer-window strong { font-size:31px; }
+  .volume-knob { width:36px; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; } }
 
 /* Full-size analog deck */
@@ -183,4 +207,24 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
 }
 @media (max-width: 520px) {
   .turntable { aspect-ratio:.69; border-radius:25px; }.deck-console { height:35%; left:3%; right:3%; padding:11px; }.dial-zone { transform:scale(.82); }.timer-window strong { font-size:25px; }.transport-deck { gap:5px; }.next-plunger span { width:40px;height:40px; }.play-toggle span { height:43px; }.focus-panel { padding:22px 16px; }
+}
+
+/* Final responsive instrument sizing */
+.deck-console { top:3%; right:2.5%; bottom:3%; width:28%; }
+.timer-window { min-height:84px; padding:12px 14px; }
+.timer-window strong { margin-top:5px; font-size:clamp(34px,4vw,54px); letter-spacing:-.09em; }
+.dial-legend { inset:10% 12%; }
+.console-bottom { display:grid; grid-template-columns:1fr auto; align-items:end; gap:12px; margin-top:12px; }
+.deck-console .custom-time { height:34px; margin:0; }
+@media (max-width:800px) {
+  .turntable { aspect-ratio:.62; }
+  .deck-console { top:auto; height:36%; }
+  .dial-zone { margin-top:55px; }
+  .console-bottom { grid-column:2; grid-row:3; margin:0; }
+}
+@media (max-width:520px) {
+  .turntable { aspect-ratio:.56; }
+  .deck-console { height:39%; }
+  .timer-window strong { font-size:31px; }
+  .volume-knob { width:36px; }
 }

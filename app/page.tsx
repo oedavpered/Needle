@@ -164,6 +164,7 @@ export default function Home() {
   const [duration, setDuration] = useState(0);
   const [knownDurations, setKnownDurations] = useState<Record<string, number>>({});
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.82);
   const [finishOpen, setFinishOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [genre, setGenre] = useState('Ambient');
@@ -240,6 +241,10 @@ export default function Home() {
     setDuration(knownDurations[currentTrack.id] || currentTrack.duration);
     if (isRunning) void audio.play().catch(() => setSessionState('paused'));
   }, [currentTrack.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
 
   const setMinutes = (minutes: number, withSound = true) => {
     if (isRunning || isStarting) return;
@@ -441,7 +446,10 @@ export default function Home() {
                 <button className="next-plunger" disabled={!isAudiusReady} onClick={plungeNext} aria-label="Next track"><span><SkipForward /></span><small>NEXT</small></button>
                 <button className="reset-toggle" disabled={isStarting} onClick={resetSession} aria-label="Reset timer"><RotateCcw /><small>RESET</small></button>
               </div>
-              <label className="custom-time"><span>CUSTOM</span><input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="MIN" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} /></label>
+              <div className="console-bottom">
+                <label className="custom-time"><span>CUSTOM</span><input disabled={isRunning || isStarting} type="number" min="1" max="180" inputMode="numeric" placeholder="MIN" value={customMinutes} onChange={(event) => setCustomMinutes(event.target.value)} onBlur={commitCustomMinutes} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomMinutes(); }} /></label>
+                <label className="volume-control"><span>VOLUME</span><span className="volume-knob" style={{ '--volume-angle': `${-135 + volume * 270}deg` } as CSSProperties}><i /><input type="range" min="0" max="1" step="0.02" value={volume} aria-label="Volume" onPointerDown={() => playMechanism(muted, 'dial')} onChange={(event) => { setVolume(Number(event.target.value)); if (muted) setMuted(false); }} /></span></label>
+              </div>
             </div>
           </div>
 
