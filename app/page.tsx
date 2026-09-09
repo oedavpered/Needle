@@ -35,6 +35,15 @@ const moods = [
   { label: 'LO-FI', genre: 'Lo-Fi' },
 ];
 
+const dialPresets = [
+  { minutes: 5, angle: -135 },
+  { minutes: 10, angle: -72 },
+  { minutes: 15, angle: -24 },
+  { minutes: 25, angle: 24 },
+  { minutes: 45, angle: 72 },
+  { minutes: 60, angle: 135 },
+];
+
 const formatTime = (seconds: number) => {
   const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
   return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
@@ -259,7 +268,7 @@ export default function Home() {
 
   const cycleTimer = () => {
     if (isRunning || isStarting) return;
-    const values = [5, 10, 15, 25, 45, 60];
+    const values = dialPresets.map(({ minutes }) => minutes);
     const current = values.indexOf(selectedMinutes);
     playMechanism(muted, 'dial');
     setMinutes(values[(current < 0 ? 0 : current + 1) % values.length], false);
@@ -433,8 +442,8 @@ export default function Home() {
               <div className="console-label"><span>NEEDLE</span><small>FOCUS DECK / NF-25</small></div>
               <div className="timer-window"><small>FOCUS REMAINING</small><strong aria-live="polite">{formatTime(secondsLeft)}</strong></div>
               <div className="dial-zone">
-                <button className="timer-knob" disabled={isRunning || isStarting} onClick={cycleTimer} aria-label={`Focus timer ${selectedMinutes} minutes. Turn to change`} style={{ '--dial-angle': `${-125 + ([5,10,15,25,45,60].indexOf(selectedMinutes) < 0 ? 3 : [5,10,15,25,45,60].indexOf(selectedMinutes)) * 50}deg` } as CSSProperties}><i /></button>
-                <div className="dial-legend">{[5,10,15,25,45,60].map((minutes) => <button disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => { playMechanism(muted, 'dial'); setMinutes(minutes, false); }}>{minutes}</button>)}</div>
+                <button className="timer-knob" disabled={isRunning || isStarting} onClick={cycleTimer} aria-label={`Focus timer ${selectedMinutes} minutes. Turn to change`} style={{ '--dial-angle': `${dialPresets.find(({ minutes }) => minutes === selectedMinutes)?.angle ?? 24}deg` } as CSSProperties}><i /></button>
+                <div className="dial-legend">{dialPresets.map(({ minutes, angle }) => <button style={{ '--mark-angle': `${angle}deg` } as CSSProperties} disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => { playMechanism(muted, 'dial'); setMinutes(minutes, false); }}>{minutes}</button>)}</div>
               </div>
               <div className="transport-deck">
                 <button className={`play-toggle ${isRunning ? 'active' : ''}`} disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause session' : 'Play session'}><span>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</span><small>{isStarting ? 'STARTING' : isRunning ? 'PAUSE' : 'PLAY'}</small></button>

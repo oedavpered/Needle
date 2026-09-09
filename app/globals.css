@@ -171,6 +171,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
   .timer-window strong { font-size:31px; }
   .volume-knob { width:36px; }
 }
+
+/* One radial scale drives both labels and the timer pointer. */
+.dial-legend { inset:0; }
+.dial-legend button { left:50% !important; top:50% !important; right:auto !important; bottom:auto !important; transform:translate(-50%,-50%) rotate(var(--mark-angle)) translateY(clamp(-78px,-6.6vw,-60px)) rotate(calc(var(--mark-angle) * -1)); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; } }
 
 /* Full-size analog deck */
