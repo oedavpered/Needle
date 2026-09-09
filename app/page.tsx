@@ -425,11 +425,6 @@ export default function Home() {
 
       <section className="workspace">
         <div className="player-column">
-          <div className="catalog-controls">
-            <div className="catalog-title"><Cloud /> AUDIUS CATALOG</div>
-            <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting || !isAudiusReady} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>
-            <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — TAP REFRESH TO RETRY' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>
-          </div>
           <div className="eyebrow">NOW SPINNING · {String(safeIndex + 1).padStart(2, '0')} · {sourceLabel}</div>
           <div className={`turntable ${isRunning ? 'is-playing' : ''} ${isStarting ? 'is-starting' : ''}`} aria-label={`Vinyl turntable playing ${currentTrack.title}`}>
             <div className="platter"><div className="record" style={vinylStyle} onPointerMove={moveVinylGlow} onPointerLeave={restVinylGlow}><div className={`record-label ${currentTrack.artwork ? 'has-artwork' : ''}`} style={labelStyle}><span>{currentTrack.title}</span><small>{currentTrack.artist}</small></div></div></div>
@@ -459,6 +454,11 @@ export default function Home() {
           </div>
           <input className="progress-range" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} aria-label="Track position" onPointerDown={() => playAnalogClick(muted)} onChange={(event) => { const next = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = next; setCurrentTime(next); }} style={{ '--progress': `${duration ? (currentTime / duration) * 100 : 0}%` } as CSSProperties} />
           <div className="time-row"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
+          <div className="catalog-controls catalog-below-player">
+            <div className="catalog-title"><Cloud /> AUDIUS CATALOG</div>
+            <div className="mood-row"><div className="moods">{moods.map((mood) => <button disabled={isRunning || isStarting} className={genre === mood.genre ? 'active' : ''} key={mood.genre} onClick={() => chooseMood(mood.genre)}>{mood.label}</button>)}</div><button className="refresh-catalog" disabled={isRunning || isStarting || !isAudiusReady} onClick={randomizeQueue} aria-label="Shuffle playlist"><Shuffle /></button><button className="refresh-catalog" disabled={isCatalogLoading || isRunning || isStarting} onClick={refreshAudius} aria-label="Refresh Audius playlist"><RefreshCw className={isCatalogLoading ? 'spinning' : ''} /></button></div>
+            <p className={`catalog-status ${catalogStatus}`}><span />{catalogStatus === 'loading' ? 'TUNING INTO AUDIUS…' : catalogStatus === 'error' ? 'AUDIUS IS QUIET — TAP REFRESH TO RETRY' : `${genre.toUpperCase()} STREAM · LIVE FROM AUDIUS`}</p>
+          </div>
           <aside className="focus-panel">
           <div className="playlist-head"><div><p>YOUR SESSION</p><h3>{isAudiusReady ? `${genre} flow` : 'Finding your flow'}</h3></div><span>{formatTime(queue.total)} · {queue.items.length} TRACKS</span></div>
           <ol className="playlist">{queue.items.map(({ track, sourceIndex, duration: trackDuration, queueIndex }) => <li className={sourceIndex === safeIndex ? 'playing' : ''} key={`${track.id}-${queueIndex}`}><button onClick={() => selectTrack(sourceIndex)} aria-label={`Play ${track.title} by ${track.artist}`}><span className="track-index">{String(queueIndex + 1).padStart(2, '0')}</span><span className="track-copy"><strong>{track.title}</strong><small>{track.artist}</small></span><time>{formatTime(trackDuration)}</time></button></li>)}</ol>

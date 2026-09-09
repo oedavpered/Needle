@@ -228,3 +228,17 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
   .timer-window strong { font-size:31px; }
   .volume-knob { width:36px; }
 }
+
+/* Catalog placement and final dial geometry */
+.catalog-below-player { width:min(920px,100%); margin:32px auto 0; padding:20px; border:1px solid rgba(255,255,255,.9); border-radius:24px; background:rgba(255,255,255,.5); box-shadow:0 18px 44px rgba(70,53,91,.1); backdrop-filter:blur(18px); }
+.dial-legend { inset:18% 20%; }
+@media (max-width:800px) {
+  .deck-console { top:auto; left:5%; right:auto; bottom:3%; width:90% !important; height:36%; box-sizing:border-box; }
+  .dial-legend { inset:16% 18%; }
+  .catalog-below-player { margin-top:26px; }
+}
+@media (max-width:520px) {
+  .deck-console { left:3%; right:auto; width:94% !important; height:39%; }
+  .dial-legend { inset:15% 17%; }
+  .catalog-below-player { padding:14px; border-radius:20px; }
+}
