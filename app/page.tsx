@@ -36,12 +36,12 @@ const moods = [
 ];
 
 const dialPresets = [
-  { minutes: 5, angle: -135 },
-  { minutes: 10, angle: -72 },
-  { minutes: 15, angle: -24 },
-  { minutes: 25, angle: 24 },
-  { minutes: 45, angle: 72 },
-  { minutes: 60, angle: 135 },
+  { minutes: 5, angle: -150 },
+  { minutes: 10, angle: -90 },
+  { minutes: 15, angle: -30 },
+  { minutes: 25, angle: 30 },
+  { minutes: 45, angle: 90 },
+  { minutes: 60, angle: 150 },
 ];
 
 const formatTime = (seconds: number) => {
