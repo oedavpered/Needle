@@ -246,3 +246,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(124, 94, 170
   .dial-legend { inset:15% 17%; }
   .catalog-below-player { padding:14px; border-radius:20px; }
 }
+
+/* Keep every timer mark on one true circular radius. */
+.dial-legend { inset:auto; left:50%; top:50%; width:clamp(142px,13.5vw,168px); height:clamp(142px,13.5vw,168px); transform:translate(-50%,-50%); }
+@media (max-width:800px) { .dial-legend { inset:auto; left:50%; top:50%; width:156px; height:156px; } }
+@media (max-width:520px) { .dial-legend { inset:auto; left:50%; top:50%; width:148px; height:148px; } }
