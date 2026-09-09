@@ -185,12 +185,30 @@ export default function Home() {
   useEffect(() => {
     const controller = new AbortController();
     setCatalogStatus('loading');
-    fetch(`/api/audius?genre=${encodeURIComponent(genre)}&refresh=${refreshKey}`, { signal: controller.signal })
+    const endpoint = new URL('https://api.audius.co/v1/tracks/trending');
+    endpoint.searchParams.set('genre', genre);
+    endpoint.searchParams.set('time', 'month');
+    endpoint.searchParams.set('limit', '24');
+    endpoint.searchParams.set('app_name', 'Needle');
+    endpoint.searchParams.set('refresh', String(refreshKey));
+    fetch(endpoint, { signal: controller.signal, cache: 'no-store' })
       .then((response) => {
         if (!response.ok) throw new Error('Audius catalog unavailable');
-        return response.json() as Promise<{ tracks: Track[] }>;
+        return response.json() as Promise<{ data?: Array<{ id?: string; title?: string; duration?: number; is_streamable?: boolean; artwork?: { '480x480'?: string; '1000x1000'?: string }; user?: { name?: string } }> }>;
       })
-      .then(({ tracks }) => {
+      .then(({ data }) => {
+        const tracks: Track[] = (data || [])
+          .filter((track) => track.id && track.title && track.is_streamable !== false && (track.duration || 0) > 45)
+          .slice(0, 18)
+          .map((track) => ({
+            id: `audius-${track.id}`,
+            artist: track.user?.name?.trim() || 'Audius artist',
+            title: track.title || 'Untitled',
+            src: `https://api.audius.co/v1/tracks/${track.id}/stream?app_name=Needle`,
+            duration: track.duration || 180,
+            artwork: track.artwork?.['480x480'] || track.artwork?.['1000x1000'],
+            source: 'audius',
+          }));
         if (!tracks.length) throw new Error('No streamable tracks');
         setOnlineTracks(tracks);
         setCurrentIndex(0);
@@ -420,11 +438,12 @@ export default function Home() {
     event.currentTarget.style.setProperty('--pointer-opacity', '.1');
   };
   const sourceLabel = 'AUDIUS';
+  const assetBase = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io') ? '/Needle' : '';
 
   return (
     <main className="app-shell">
       <audio ref={audioRef} src={isAudiusReady ? currentTrack.src : undefined} muted={muted} onEnded={() => changeTrack(1, false)} onError={() => { setCatalogStatus('error'); setCurrentIndex(0); }} onLoadedMetadata={handleMetadata} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} />
-      <audio ref={powerRef} src="/audio/sounds/turning-on-the-gramophone.mp3" muted={muted} preload="auto" />
+      <audio ref={powerRef} src={`${assetBase}/audio/sounds/turning-on-the-gramophone.mp3`} muted={muted} preload="auto" />
 
       <header className="topbar">
         <a className="brand" href="#" aria-label="Needle home"><span className="brand-dot" /> NEEDLE</a>
