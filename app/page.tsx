@@ -36,12 +36,12 @@ const moods = [
 ];
 
 const dialPresets = [
-  { minutes: 5, angle: -150 },
-  { minutes: 10, angle: -90 },
-  { minutes: 15, angle: -30 },
-  { minutes: 25, angle: 30 },
-  { minutes: 45, angle: 90 },
-  { minutes: 60, angle: 150 },
+  { minutes: 5, angle: -120, x: 13.6, y: 71 },
+  { minutes: 10, angle: -60, x: 13.6, y: 29 },
+  { minutes: 15, angle: 0, x: 50, y: 8 },
+  { minutes: 25, angle: 60, x: 86.4, y: 29 },
+  { minutes: 45, angle: 120, x: 86.4, y: 71 },
+  { minutes: 60, angle: 180, x: 50, y: 92 },
 ];
 
 const formatTime = (seconds: number) => {
@@ -443,7 +443,7 @@ export default function Home() {
               <div className="timer-window"><small>FOCUS REMAINING</small><strong aria-live="polite">{formatTime(secondsLeft)}</strong></div>
               <div className="dial-zone">
                 <button className="timer-knob" disabled={isRunning || isStarting} onClick={cycleTimer} aria-label={`Focus timer ${selectedMinutes} minutes. Turn to change`} style={{ '--dial-angle': `${dialPresets.find(({ minutes }) => minutes === selectedMinutes)?.angle ?? 24}deg` } as CSSProperties}><i /></button>
-                <div className="dial-legend">{dialPresets.map(({ minutes, angle }) => <button style={{ '--mark-angle': `${angle}deg` } as CSSProperties} disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => { playMechanism(muted, 'dial'); setMinutes(minutes, false); }}>{minutes}</button>)}</div>
+                <div className="dial-legend">{dialPresets.map(({ minutes, x, y }) => <button style={{ left: `${x}%`, top: `${y}%` }} disabled={isRunning || isStarting} className={minutes === selectedMinutes ? 'active' : ''} key={minutes} onClick={() => { playMechanism(muted, 'dial'); setMinutes(minutes, false); }}>{minutes}</button>)}</div>
               </div>
               <div className="transport-deck">
                 <button className={`play-toggle ${isRunning ? 'active' : ''}`} disabled={!isAudiusReady || isStarting} onClick={startOrToggle} aria-label={isRunning ? 'Pause session' : 'Play session'}><span>{isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</span><small>{isStarting ? 'STARTING' : isRunning ? 'PAUSE' : 'PLAY'}</small></button>
